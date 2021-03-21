@@ -1,0 +1,159 @@
+---
+title: "Holt Exponential Smoothing"
+author: "Fallaw Sowell"
+date: "3/14/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+\tableofcontents 
+\newpage
+
+## Holt Smoothing -- Annual Hot Water Heater Sales 
+
+This file was created with R markdown and Knit.  This demonstrates how to read in a data from an excel file, obtain summary statistics, plot the time series, perform Holt exponential smoothing to get forecasts, plot the forecasts and save the forecasts to an excel file.    
+
+### Load the needed libraries
+
+```{r load libraries, message=FALSE, warning=FALSE}
+
+rm(list=ls()) # clear the work area 
+
+if (!require('readxl')) install.packages('readxl')
+library('readxl')
+
+if (!require('writexl')) install.packages('writexl')
+library('writexl')
+
+if (!require('ggplot2')) install.packages('ggplot2')
+library('ggplot2')
+
+if (!require('ggfortify')) install.packages('ggfortify')
+library('ggfortify')
+
+if (!require('forecast')) install.packages('forecast')
+library('forecast')
+
+if (!require('lubridate')) install.packages('lubridate')
+library('lubridate')
+
+if (!require('zoo')) install.packages('zoo')
+library('zoo')
+```
+
+
+### Load the data into R
+
+First, read the data from the excel file and save as a data.frame.   This excel file needs to be in the R working directory.   Alternatively, you would need to include the path the excel file.  
+
+The data are annual hot water heater sales from an consulting project.     
+
+It is good practice to review the data by looking at its structure. 
+
+```{r Read the data, echo=TRUE }
+
+data_from_excel <- read_excel("Annual_Hot_Water.xlsx") 
+str( data_from_excel )
+
+```
+
+### Make Hot Water Heater Sales a monthly time series 
+
+The next chunck of R code, creates that time series data structure for the sales, displays its structure, reports basic summary values, and plots the time series.  It is good practice to label your plots so then you share them everyone knows what is being displayed.
+
+``` {r make_timeseries,_summarize,_and_plot}
+
+PROD_A <- ts(data_from_excel, start=c(2004), frequency = 1, names =c("Sales of Product A") )
+
+str(PROD_A)
+
+summary(PROD_A)
+
+autoplot(PROD_A, color = 'red') +
+  labs(x = "Observation Date", y = "Sales of Product A")
+
+```
+
+###  Plot with ggplot2
+
+The next chunck of R code uses ggplot to create a plot of the data.   The function ggplot only accepts data in the form of a dataframe.
+
+```{r  ggplot_data}
+
+df_data <- data.frame(date=as.Date(as.yearqtr(time(PROD_A))), Y=as.matrix(PROD_A))
+ggplot(data=df_data, mapping=aes(x=date, y=Sales.of.Product.A))+geom_point()
+
+```
+
+### Create forecasts using Holt smoothing
+
+The series has a time trend but no seasonal components hence, Holt smoothing would be appropriate. 
+
+We will use the function ets().  The first argument is the time series data, the second argument is the model with the three terms "error, trend, seasonal".  The options for the terms are   
+
+  "N" - none
+  "A" - additive
+  "M" - multiplicative
+  "Z" - automatically selected
+  
+You perform Holt exponential smoothing with the ets() function with model = "AAN".  
+  
+The following chuck of R code perform Holt smoothing and save the generated data.  It then displays summary information.   
+
+``` {r simple_exponential_smoothing}
+
+HOLT <- ets(PROD_A, model = "AAN", alpha = .2, beta = .15)  
+HOLT
+str(HOLT)
+plot(HOLT)
+HOLT.pred <- forecast(HOLT, h = 3, level = c(95))
+HOLT.pred
+str(HOLT.pred)
+plot(HOLT.pred)
+
+```
+
+###  do the same things with the automatic procedure
+
+The next chuck of R code automatically generates the default Holt exponential smoothing forecasts.
+
+``` {r automatic_forecasts}
+
+HOLT_auto <- ets(PROD_A, model = "AAN")  
+HOLT_auto
+plot(HOLT_auto)
+HOLT_auto.pred <- forecast(HOLT_auto, h = 3, level = c(95))
+plot(HOLT_auto.pred)
+
+```
+
+
+### Write the forecasted value and the confidence interval to an excel file
+
+The next chuck of R code saves the forecasts to excel.  This will allow you to share your forecasts with others. 
+
+```  {r write_forecasts_to_excel}
+
+col_names <- as.yearmon(time(HOLT.pred$mean)) 
+my_df <-  data.frame( as.Date(col_names), HOLT.pred$mean, HOLT.pred$lower, HOLT.pred$upper)
+colnames(my_df) <- c("Date", "Forecast", "95% Lower", "95% Upper" )
+write_xlsx(my_df, "Annual_Sales_A_prediction.xlsx")
+
+```
+
+### Nice focused plot of the forecasts.
+
+The next chunck of R code uses ggplot to generate a plot.  The package ggplot allows for control over what is plotted.  
+
+```  {r  ggplot_of_the_forecasts}
+
+ggplot(data = my_df, aes(x = Date, y = as.double(Forecast) )) +
+  geom_point( color="blue" ) + 
+  geom_line(aes(x = Date, y = `95% Lower`), color="red" ) +  
+  geom_line(aes(x = Date, y = `95% Upper`), color="red" ) +
+  geom_point(data=df_data, mapping=aes(x=date, y=Sales.of.Product.A))+
+  labs(x = "Date", y = "Sales of Product A")
+```

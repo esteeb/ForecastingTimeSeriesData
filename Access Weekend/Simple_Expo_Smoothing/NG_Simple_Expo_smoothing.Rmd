@@ -1,0 +1,218 @@
+---
+title: "Exponential Smoothing"
+author: "Fallaw Sowell"
+date: "3/14/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+\tableofcontents 
+\newpage
+
+## Simple Exponential Smoothing - Price of Natural Gas 
+
+This file was created with R markdown and Knit.  This demonstrates how to read in a data from an excel file, obtain summary statistics, plot the time series, perform simple exponential smoothing to get forecasts, plot the forecasts and save the forecasts to an excel file.    
+
+### Load the needed libraries
+
+```{r load libraries, message=FALSE, warning=FALSE}
+
+rm(list=ls()) # clear the work area 
+
+if (!require('readxl')) install.packages('readxl')
+library('readxl')
+
+if (!require('writexl')) install.packages('writexl')
+library('writexl')
+
+if (!require('ggplot2')) install.packages('ggplot2')
+library('ggplot2')
+
+if (!require('ggfortify')) install.packages('ggfortify')
+library('ggfortify')
+
+if (!require('forecast')) install.packages('forecast')
+library('forecast')
+
+if (!require('lubridate')) install.packages('lubridate')
+library('lubridate')
+
+if (!require('zoo')) install.packages('zoo')
+library('zoo')
+```
+
+
+### Load the data into R
+
+First, read the data from the excel file and save as a data.frame.   This excel file needs to be in the R working directory.   Alternatively, you would need to include the path the excel file.  
+
+This data are the monthly price of natural gas from the FRED database at the St. Louis Fed.    
+
+```{r Read the data, echo=TRUE }
+
+data_from_excel <- read_excel("NG.xlsx") 
+
+```
+
+###  Get familiar with your data, variables, size, etc. 
+
+It is good practice to review the data by looking at its structure.  
+
+```{r Look_at_the_structure_of_the_data.frame}
+
+str( data_from_excel )
+
+```
+
+
+### Make NG a monthly time series 
+
+The next chunck of R code, creates that time series data structure for the natural gas prices, displays its structure, reports basic summary values, and plots the time series.  It is good practice to label your plots so then you share them everyone knows what is being displayed.
+
+``` {r make_timeseries,_summarize,_and_plot}
+
+NG <- ts(data_from_excel, start=c(1997,1), frequency = 12, names =c("Natural Gas Price") )
+
+str(NG)
+
+summary(NG)
+
+autoplot(NG, color = 'red') +
+  labs(x = "Observation Date", y = "Natural Gas Price")
+```
+
+
+###  Plot with ggplot2
+
+The next chunck of R code uses ggplot to create a plot of the data.   The function ggplot only accepts data in the form of a dataframe.
+
+```{r  ggplot_data}
+
+df_data <- data.frame(date=as.Date(as.yearmon(time(NG))), Y=as.matrix(NG))
+ggplot(data=df_data, mapping=aes(x=date, y=Natural.Gas.Price))+geom_point()
+
+```
+
+### Create forecasts using simple exponential smoothing
+
+The series has no trend and no seasonal components hence, simple exponential smoothing would be appropriate. 
+
+We will use the function ets().  The first argument is the time series data, the second argument is the model with the three terms "error, trend, seasonal".  The options for the terms are   
+
+  "N" - none
+  "A" - additive
+  "M" - multiplicative
+  "Z" - automatically selected
+  
+  
+The following chuck of R code perform the exponential smoothing and save the generated data.  It then displays summary information.   
+
+``` {r simple_exponential_smoothing}
+
+SES <- ets(NG, model = "ANN", alpha = .2) 
+
+SES
+
+```
+
+
+###  Look at the data structure of the output
+
+The following chuck of R code shows the data structure that is saved by ets(). 
+
+```  {r see_the_structure}
+
+str(SES)
+
+```
+
+
+### plot the output
+
+The next chuck of R code plots the data and the fitted values. 
+
+``` {r  plot_the_fitted_values}
+
+plot(SES)
+
+```
+
+
+### Create predictions
+
+The next chuck of R code generates and the displays the forecasts. 
+
+``` {r generate_some_forecasts}
+SES.pred <- forecast(SES, h = 18, level = c(95))
+
+
+SES.pred
+```
+
+
+
+### look at the data structure of the predictions
+
+The next chunk of R code displays the structure of the data created by forecast()
+
+``` {r look_at_the_structure_of_the_predictions}
+
+str(SES.pred)
+
+```
+
+### Plot the predictions
+
+The next chuck of R code plots the data, the forecasts and the confidence intervals.
+
+``` {r plot_the_forecasts}
+
+plot(SES.pred)
+
+```
+
+
+###  do the same things with the automatic procedure
+
+The next chuck of R code automatically generates the default exponential smoothing forecasts.
+
+``` {r automatic_forecasts}
+
+SES_auto <- ets(NG, model="ANN")  
+SES_auto
+SES_auto.pred <- forecast(SES_auto, h = 18, level = c(95))
+plot(SES_auto.pred)
+
+```
+
+
+### Write the forecasted value and the confidence interval to an excel file
+
+The next chuck of R code saves the forecasts to excel.  This will allow you to share your forecasts with others. 
+
+```  {r write_forecasts_to_excel}
+
+col_names <- as.yearmon(time(SES.pred$mean), "%m-%Y") 
+my_df <-  data.frame( as.Date(col_names), SES.pred$mean, SES.pred$lower, SES.pred$upper)
+colnames(my_df) <- c("Date", "Forecast", "95% Lower", "95% Upper")
+write_xlsx(my_df, "NG_prediction.xlsx")
+
+```
+
+### Nice focused plot of the forecasts.
+
+The next chunck of R code uses ggplot to generate a plot.  The package ggplot allows for control over what is plotted.  
+
+```  {r  ggplot_of_the_forecasts}
+
+ggplot(data = my_df, aes(x = Date, y = as.double(Forecast) )) +
+  geom_point( color="blue" ) + 
+  geom_line(aes(x = Date, y = `95% Lower`), color="red" ) +  
+  geom_line(aes(x = Date, y = `95% Upper`), color="red" ) +
+  geom_point(data=df_data, mapping=aes(x=date, y=Natural.Gas.Price))+
+  labs(x = "Date", y = "Natural Gas Price")
+
+```
