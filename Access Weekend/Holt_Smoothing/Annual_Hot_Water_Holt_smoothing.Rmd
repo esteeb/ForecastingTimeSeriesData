@@ -146,7 +146,7 @@ write_xlsx(my_df, "Annual_Sales_A_prediction.xlsx")
 
 ### Nice focused plot of the forecasts.
 
-The next chunck of R code uses ggplot to generate a plot.  The package ggplot allows for control over what is plotted.  
+The next chunk of R code uses ggplot to generate a plot.  The package ggplot allows for control over what is plotted.  
 
 ```  {r  ggplot_of_the_forecasts}
 

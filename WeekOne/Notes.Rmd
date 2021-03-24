@@ -1,0 +1,26 @@
+---
+title: "Week 1 Notes"
+author: "Erik Rehnberg Steeb"
+date: "3/23/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Model Selection
+
+Take regression - select highest R^2 - equivalent to selecting model with lowest Mean Squared Error.
+
+Overfitting danger - as variables are added, we can be fitting observed data - gives high R^2, low MSE, awful forecasts - not accurately modeling trends. Adding parameters reduces degrees of freedom.
+
+Also looking for lowest s^2. s^2 as penalty weight (T/(T-k))MSE - new parameter will lower MSE, but will increase (T/(T-k)) - s^2 may or may not decrease.
+
+```{r cars}
+summary(cars)
+```
+
+## Lag Operator
+* Accounts for how changes may not immediately affect measures. For example, tax policy may not immediately impact GDP, since people will react over time, not instantaneously.
+** Need to determine how far back things have effects - convention is Lyt = yt-1 (some books use B). Two period lag --> L^2y = yt-2
