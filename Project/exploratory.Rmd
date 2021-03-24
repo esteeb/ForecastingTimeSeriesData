@@ -1,0 +1,44 @@
+---
+title: "Project Setup"
+author: "Erik Rehnberg Steeb"
+date: "3/24/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(readxl)
+
+# Change this line to reflect your path/comment it out if you don't need to change your wd
+setwd("./Project")
+```
+
+## Read in files
+
+Read in 2021 data (so far). Each worksbook has 3 tabs/worksheets. Production is tab/sheet 2, curtailment is sheet 3. There's a generic readme on sheet 1, which we can ignore
+
+```{r}
+production_data <- read_excel("data/ProductionAndCurtailmentsData_2021.xlsx",sheet = 2)
+head(production_data)
+```
+
+This next section will read in all workbooks and output two dataframes, `{r} production_df` and `{r}curtailment_df`. The `Load` through `Thermal` columns of the production tabs each contain commas in the columns, which need to be cleaned. Similarly, the curtailment column reads in a host of `NAs`, as well as containing commas. 
+
+```{r}
+files <- list.files("data/")
+
+production_df <- data.frame()
+curtailment_df <- data.frame()
+
+for (i in 1:length(files)){
+  prod_data <- read_excel(paste0("data/",files[i]), sheet = 2)
+  curt_data <- read_excel(paste0("data/",files[i]), sheet = 3)
+  production_df <- rbind(production_df, prod_data)
+  curtailment_df <- rbind(curtailment_df, curt_data)
+  print(i)
+  i <- i+1
+}
+
+
+```
